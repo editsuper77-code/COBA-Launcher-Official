@@ -25,10 +25,10 @@ jobs:
     - name: Build with Gradle
       run: |
         cd Coba-lachucher--3_openjdk
-        ./gradlew clean assembleDebug --stacktrace
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: Coba-lachucher--3_openjdk/app/build/outputs/apk/debug/app-debug.apk
+        path: Coba-lachucher--3_openjdk/app_mojo/build/outputs/apk/debug/app-debug.apk
