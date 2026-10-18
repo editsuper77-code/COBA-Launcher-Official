@@ -18,13 +18,17 @@ jobs:
         distribution: 'temurin'
 
     - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      run: |
+        cd Coba-lachucher--3_openjdk
+        chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: |
+        cd Coba-lachucher--3_openjdk
+        ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: Coba-lachucher--3_openjdk/app/build/outputs/apk/debug/app-debug.apk
