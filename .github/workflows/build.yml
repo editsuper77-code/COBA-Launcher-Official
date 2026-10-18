@@ -25,7 +25,7 @@ jobs:
     - name: Build with Gradle
       run: |
         cd Coba-lachucher--3_openjdk
-        ./gradlew assembleDebug
+        ./gradlew clean assembleDebug --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
