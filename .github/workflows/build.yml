@@ -38,12 +38,10 @@ jobs:
           fi
         done
 
-    - name: Show SDL mouse API and patch SDLBackend
+    - name: Patch SDLBackend
       run: |
         APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
         ROOT=$(dirname "$(dirname "$APP")")
-        echo "=== SDL mouse methods ==="
-        grep -rn "onNativeMouse" "$ROOT/sdl" --include=SDLActivity.java || echo "not found"
         python3 - "$ROOT" <<'EOF'
         import sys, glob
         root = sys.argv[1]
@@ -65,9 +63,10 @@ jobs:
         cd "$ROOT"
         chmod +x gradlew
         ./gradlew :app_mojo:assembleFullDebug --console=plain 2>&1 | tee build.log || true
-        echo "=========== ERROR SUMMARY ==========="
-        grep -A 12 "What went wrong" build.log || echo "No error block found"
-        grep -E "error:" build.log | head -n 15 || true
+        echo "=========== REAL ERRORS ==========="
+        grep -n -A 6 "CMake Error" build.log | head -n 40 || true
+        grep -n "error:" build.log | head -n 15 || true
+        grep -n -i "No such file\|not found\|undefined reference" build.log | head -n 15 || true
         grep -q "BUILD SUCCESSFUL" build.log
 
     - uses: actions/upload-artifact@v4
