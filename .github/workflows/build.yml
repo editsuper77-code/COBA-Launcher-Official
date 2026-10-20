@@ -29,7 +29,7 @@ jobs:
         echo "Gradle mila yahan: $G"
         cd "$(dirname "$G")"
         chmod +x gradlew
-        ./gradlew makeFullDebug --stacktrace
+        ./gradlew makeApkFromBundleForFullDebug --stacktrace
 
     - uses: actions/upload-artifact@v4
       if: always()
