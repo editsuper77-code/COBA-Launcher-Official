@@ -27,8 +27,6 @@ jobs:
         ROOT=$(dirname "$(dirname "$APP")")
         git clone https://github.com/MojoLauncher/MojoLauncher /tmp/orig
         git -C /tmp/orig submodule update --init --recursive
-        echo "=== original repo ==="
-        ls /tmp/orig
         for d in glfw sdl mojoexec NoBlocklist app_mojo/src/main/jni/glfw app_mojo/src/main/jni/sdl; do
           if [ -e "/tmp/orig/$d" ] && [ -z "$(ls -A "$ROOT/$d" 2>/dev/null)" ]; then
             echo "Restoring $d"
@@ -39,8 +37,29 @@ jobs:
             echo "Skipping $d"
           fi
         done
-        echo "=== restored ==="
-        ls "$ROOT/glfw" "$ROOT/sdl" "$ROOT/mojoexec" "$ROOT/NoBlocklist" || true
+
+    - name: Find SDL version matching your code
+      run: |
+        APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
+        ROOT=$(dirname "$(dirname "$APP")")
+        git clone https://github.com/MojoLauncher/MojoSDL /tmp/sdlrepo
+        cd /tmp/sdlrepo
+        FOUND=""
+        for c in $(git rev-list --all -- '*SDLActivity.java'); do
+          f=$(git ls-tree -r --name-only "$c" | grep 'SDLActivity.java$' | head -n 1)
+          [ -z "$f" ] && continue
+          if git show "$c:$f" | grep -qE 'onNativeMouseButton\([^,)]*,[^,)]*,[^,)]*,[^,)]*,[^,)]*\)'; then
+            FOUND="$c"; break
+          fi
+        done
+        echo "Matching SDL commit: ${FOUND:-NONE}"
+        if [ -n "$FOUND" ]; then
+          git checkout -f "$FOUND"
+          git submodule update --init --recursive || true
+          rm -rf "$ROOT/sdl"
+          cp -a /tmp/sdlrepo "$ROOT/sdl"
+          rm -rf "$ROOT/sdl/.git"
+        fi
 
     - name: Build
       run: |
