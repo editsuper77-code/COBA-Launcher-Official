@@ -23,16 +23,34 @@ jobs:
 
     - uses: gradle/actions/setup-gradle@v4
 
-    - name: Check project
+    - name: Fetch missing submodules
       run: |
         G=$(find . -name gradlew | head -n 1)
         cd "$(dirname "$G")"
-        echo "=== settings ==="
-        cat settings.gradle* || true
-        echo "=== glfw ==="
-        ls -la glfw glfw/jni_bindings || true
-        echo "=== sdl ==="
-        ls -la sdl sdl/jni_bindings || true
+        echo "=== .gitmodules ==="
+        cat .gitmodules || true
+        git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | while read key path; do
+          name=${key#submodule.}; name=${name%.path}
+          url=$(git config -f .gitmodules --get "submodule.$name.url")
+          if [ -z "$(ls -A "$path" 2>/dev/null)" ]; then
+            echo "Cloning $url -> $path"
+            rm -rf "$path"
+            git clone --depth 1 --recurse-submodules "$url" "$path" || echo "CLONE FAILED: $url"
+          fi
+        done
+        echo "=== top folders ==="
+        ls
+        echo "=== glfw / sdl / NoBlocklist ==="
+        ls glfw sdl NoBlocklist || true
+
+    - name: Skip NoBlocklist if still missing
+      run: |
+        G=$(find . -name gradlew | head -n 1)
+        cd "$(dirname "$G")"
+        if ! ls NoBlocklist/build.gradle* >/dev/null 2>&1; then
+          echo "NoBlocklist missing, removing its line from app_mojo/build.gradle"
+          sed -i '/project(":NoBlocklist")/d' app_mojo/build.gradle
+        fi
 
     - name: Build
       run: |
