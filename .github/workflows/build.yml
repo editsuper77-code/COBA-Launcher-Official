@@ -38,8 +38,6 @@ jobs:
             git clone --depth 1 --recurse-submodules "$url" "$path" || echo "CLONE FAILED: $url"
           fi
         done
-        echo "=== top folders ==="
-        ls
         echo "=== glfw / sdl / NoBlocklist ==="
         ls glfw sdl NoBlocklist || true
 
@@ -48,7 +46,6 @@ jobs:
         G=$(find . -name gradlew | head -n 1)
         cd "$(dirname "$G")"
         if ! ls NoBlocklist/build.gradle* >/dev/null 2>&1; then
-          echo "NoBlocklist missing, removing its line from app_mojo/build.gradle"
           sed -i '/project(":NoBlocklist")/d' app_mojo/build.gradle
         fi
 
@@ -57,7 +54,10 @@ jobs:
         G=$(find . -name gradlew | head -n 1)
         cd "$(dirname "$G")"
         chmod +x gradlew
-        ./gradlew :app_mojo:assembleFullDebug --stacktrace
+        ./gradlew :app_mojo:assembleFullDebug --console=plain 2>&1 | tee build.log || true
+        echo "=========== ERROR SUMMARY ==========="
+        grep -A 12 "What went wrong" build.log || echo "No error block found"
+        grep -q "BUILD SUCCESSFUL" build.log
 
     - uses: actions/upload-artifact@v4
       if: always()
