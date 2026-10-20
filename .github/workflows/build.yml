@@ -23,13 +23,23 @@ jobs:
 
     - uses: gradle/actions/setup-gradle@v4
 
+    - name: Check project
+      run: |
+        G=$(find . -name gradlew | head -n 1)
+        cd "$(dirname "$G")"
+        echo "=== settings ==="
+        cat settings.gradle* || true
+        echo "=== glfw ==="
+        ls -la glfw glfw/jni_bindings || true
+        echo "=== sdl ==="
+        ls -la sdl sdl/jni_bindings || true
+
     - name: Build
       run: |
         G=$(find . -name gradlew | head -n 1)
-        echo "Gradle mila yahan: $G"
         cd "$(dirname "$G")"
         chmod +x gradlew
-        ./gradlew makeApkFromBundleForFullDebug --stacktrace
+        ./gradlew :app_mojo:assembleFullDebug --stacktrace
 
     - uses: actions/upload-artifact@v4
       if: always()
