@@ -38,28 +38,25 @@ jobs:
           fi
         done
 
-    - name: Find SDL version matching your code
+    - name: Show SDL mouse API and patch SDLBackend
       run: |
         APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
         ROOT=$(dirname "$(dirname "$APP")")
-        git clone https://github.com/MojoLauncher/MojoSDL /tmp/sdlrepo
-        cd /tmp/sdlrepo
-        FOUND=""
-        for c in $(git rev-list --all -- '*SDLActivity.java'); do
-          f=$(git ls-tree -r --name-only "$c" | grep 'SDLActivity.java$' | head -n 1)
-          [ -z "$f" ] && continue
-          if git show "$c:$f" | grep -qE 'onNativeMouseButton\([^,)]*,[^,)]*,[^,)]*,[^,)]*,[^,)]*\)'; then
-            FOUND="$c"; break
-          fi
-        done
-        echo "Matching SDL commit: ${FOUND:-NONE}"
-        if [ -n "$FOUND" ]; then
-          git checkout -f "$FOUND"
-          git submodule update --init --recursive || true
-          rm -rf "$ROOT/sdl"
-          cp -a /tmp/sdlrepo "$ROOT/sdl"
-          rm -rf "$ROOT/sdl/.git"
-        fi
+        echo "=== SDL mouse methods ==="
+        grep -rn "onNativeMouse" "$ROOT/sdl" --include=SDLActivity.java || echo "not found"
+        python3 - "$ROOT" <<'EOF'
+        import sys, glob
+        root = sys.argv[1]
+        files = glob.glob(root + "/app_mojo/src/main/java/**/SDLBackend.java", recursive=True)
+        for f in files:
+            s = open(f).read()
+            a = "SDLActivity.onNativeMouseButton(button, state, 0, 0, true);"
+            b = "SDLActivity.onNativeMouseButton(button, state, (float) x, (float) y, false);"
+            s = s.replace(a, "SDLActivity.onNativeMouseButton(button, state);")
+            s = s.replace(b, "{ SDLActivity.onNativeMouse(0, MotionEvent.ACTION_MOVE, (float) x, (float) y, false); SDLActivity.onNativeMouseButton(button, state); }")
+            open(f, "w").write(s)
+            print("patched", f)
+        EOF
 
     - name: Build
       run: |
