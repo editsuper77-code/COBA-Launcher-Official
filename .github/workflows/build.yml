@@ -3,34 +3,35 @@ name: Build APK
 on:
   push:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-    - name: set up JDK 17
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Grant execute permission for gradlew
+    - uses: android-actions/setup-android@v3
+
+    - uses: gradle/actions/setup-gradle@v4
+
+    - name: Build
       run: |
-        cd Coba-lachucher--3_openjdk
+        G=$(find . -name gradlew | head -n 1)
+        echo "Gradle mila yahan: $G"
+        cd "$(dirname "$G")"
         chmod +x gradlew
+        ./gradlew makeFullDebug --stacktrace
 
-    - name: Build with Gradle
-      run: |
-        cd Coba-lachucher--3_openjdk
-        ./gradlew makeFullDebug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
+      if: always()
       with:
-        name: app-debug
-        path: Coba-lachucher--3_openjdk/
-app_mojo/build/outputs/apk/debug/
-app-debug.apk
+        name: apks
+        path: '**/build/outputs/apk/**/*.apk'
