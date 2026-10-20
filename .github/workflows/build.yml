@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: recursive
 
     - uses: actions/setup-java@v4
       with:
@@ -23,36 +21,26 @@ jobs:
 
     - uses: gradle/actions/setup-gradle@v4
 
-    - name: Fetch missing submodules
+    - name: Restore missing folders from original repo
       run: |
         APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
-        if [ -z "$APP" ]; then echo "app_mojo/build.gradle nahi mila"; exit 1; fi
         ROOT=$(dirname "$(dirname "$APP")")
-        cd "$ROOT"
-        echo "Project root: $ROOT"
-        echo "=== .gitmodules ==="
-        cat .gitmodules || true
-        git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | while read key path; do
-          name=${key#submodule.}; name=${name%.path}
-          url=$(git config -f .gitmodules --get "submodule.$name.url")
-          if [ -z "$(ls -A "$path" 2>/dev/null)" ]; then
-            echo "Cloning $url -> $path"
-            rm -rf "$path"
-            git clone --depth 1 --recurse-submodules "$url" "$path" || echo "CLONE FAILED: $url"
+        git clone https://github.com/MojoLauncher/MojoLauncher /tmp/orig
+        git -C /tmp/orig submodule update --init --recursive
+        echo "=== original repo ==="
+        ls /tmp/orig
+        for d in glfw sdl mojoexec NoBlocklist app_mojo/src/main/jni/glfw app_mojo/src/main/jni/sdl; do
+          if [ -e "/tmp/orig/$d" ] && [ -z "$(ls -A "$ROOT/$d" 2>/dev/null)" ]; then
+            echo "Restoring $d"
+            rm -rf "$ROOT/$d"
+            cp -a "/tmp/orig/$d" "$ROOT/$d"
+            rm -rf "$ROOT/$d/.git"
+          else
+            echo "Skipping $d"
           fi
         done
-        echo "=== glfw / sdl / NoBlocklist ==="
-        ls glfw sdl NoBlocklist || true
-
-    - name: Skip NoBlocklist if still missing
-      run: |
-        APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
-        ROOT=$(dirname "$(dirname "$APP")")
-        cd "$ROOT"
-        if ! ls NoBlocklist/build.gradle* >/dev/null 2>&1; then
-          echo "NoBlocklist missing, removing its line"
-          sed -i '/project(":NoBlocklist")/d' app_mojo/build.gradle
-        fi
+        echo "=== restored ==="
+        ls "$ROOT/glfw" "$ROOT/sdl" "$ROOT/mojoexec" "$ROOT/NoBlocklist" || true
 
     - name: Build
       run: |
@@ -63,6 +51,7 @@ jobs:
         ./gradlew :app_mojo:assembleFullDebug --console=plain 2>&1 | tee build.log || true
         echo "=========== ERROR SUMMARY ==========="
         grep -A 12 "What went wrong" build.log || echo "No error block found"
+        grep -E "error:" build.log | head -n 15 || true
         grep -q "BUILD SUCCESSFUL" build.log
 
     - uses: actions/upload-artifact@v4
