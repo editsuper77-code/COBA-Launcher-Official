@@ -25,8 +25,11 @@ jobs:
 
     - name: Fetch missing submodules
       run: |
-        G=$(find . -name gradlew | head -n 1)
-        cd "$(dirname "$G")"
+        APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
+        if [ -z "$APP" ]; then echo "app_mojo/build.gradle nahi mila"; exit 1; fi
+        ROOT=$(dirname "$(dirname "$APP")")
+        cd "$ROOT"
+        echo "Project root: $ROOT"
         echo "=== .gitmodules ==="
         cat .gitmodules || true
         git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | while read key path; do
@@ -43,16 +46,19 @@ jobs:
 
     - name: Skip NoBlocklist if still missing
       run: |
-        G=$(find . -name gradlew | head -n 1)
-        cd "$(dirname "$G")"
+        APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
+        ROOT=$(dirname "$(dirname "$APP")")
+        cd "$ROOT"
         if ! ls NoBlocklist/build.gradle* >/dev/null 2>&1; then
+          echo "NoBlocklist missing, removing its line"
           sed -i '/project(":NoBlocklist")/d' app_mojo/build.gradle
         fi
 
     - name: Build
       run: |
-        G=$(find . -name gradlew | head -n 1)
-        cd "$(dirname "$G")"
+        APP=$(find . -path '*/app_mojo/build.gradle' | head -n 1)
+        ROOT=$(dirname "$(dirname "$APP")")
+        cd "$ROOT"
         chmod +x gradlew
         ./gradlew :app_mojo:assembleFullDebug --console=plain 2>&1 | tee build.log || true
         echo "=========== ERROR SUMMARY ==========="
